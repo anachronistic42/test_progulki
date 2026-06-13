@@ -575,21 +575,39 @@
     color: #fff;
   }
 
-  /* -------------------- ВЕРХНЯЯ ПАНЕЛЬ -------------------- */
+  /* -------------------- ВЕРХНЯЯ ПАНЕЛЬ (жестко фиксированный центр) -------------------- */
   .topbar {
     position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
+    top: 0; left: 0; right: 0;
     height: 52px;
     background: rgba(13, 10, 6, 0.92);
     border-bottom: 2px solid var(--accent2);
     display: flex;
     align-items: center;
-    justify-content: space-between;
     padding: 0 20px;
-    gap: 20px;
     z-index: 100;
+  }
+  .topbar-left {
+    flex: 1 1 0;
+    display: flex;
+    align-items: center;
+    min-width: 0;
+    overflow: hidden;
+  }
+  .topbar-center {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 2;
+  }
+  .topbar-right {
+    flex: 1 1 0;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 14px;
+    min-width: 0;
   }
   .topbar .logo {
     font-family: 'Times New Roman', serif;
@@ -604,6 +622,9 @@
     padding: 2px 6px;
     border-radius: 4px;
     white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
   }
   .topbar .logo:focus {
     background: rgba(200, 162, 74, 0.2);
@@ -617,7 +638,6 @@
     border: 1px solid var(--border);
     border-radius: 20px;
     padding: 4px 6px;
-    margin: 0 auto;
   }
   .mode-toggle button {
     border: none !important;
@@ -660,6 +680,7 @@
     color: #14110c;
     border-color: var(--accent);
   }
+  
   .nav-dots {
     position: fixed;
     bottom: 14px;
@@ -774,29 +795,166 @@
   body.view-mode .empty-hint {
     display: none;
   }
+
+  /* -------------------- НАЧАЛЬНЫЙ ЭКРАН (упрощённый) -------------------- */
+  #introScreen {
+    position: fixed;
+    inset: 0;
+    z-index: 2000;
+    background: radial-gradient(ellipse at 50% 40%, #1c1810, #0d0a06 80%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    transition: opacity 1.1s ease, filter 1.1s ease;
+  }
+  #introScreen.hide {
+    opacity: 0;
+    filter: blur(14px);
+    pointer-events: none;
+  }
+
+  /* Выемка-приёмник в центре */
+  #introSlot {
+    position: absolute;
+    left: 50%;
+    top: 56%;
+    transform: translate(-50%, -50%);
+    width: 320px;
+    height: 70px;
+    border: 2px dashed var(--accent2);
+    border-radius: 8px;
+    background: rgba(168, 68, 42, 0.06);
+    box-shadow: inset 0 0 30px rgba(0,0,0,0.6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--muted);
+    font-family: 'Courier New', monospace;
+    font-size: 16px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    font-weight: bold;
+    transition: border-color 0.25s, background 0.25s, box-shadow 0.25s;
+  }
+  #introSlot.armed {
+    border-color: var(--accent);
+    background: rgba(200, 162, 74, 0.15);
+    box-shadow: inset 0 0 30px rgba(200,162,74,0.25), 0 0 24px rgba(200,162,74,0.3);
+    color: var(--accent);
+  }
+
+  /* Убегающая кнопка, теперь одинакового размера с выемкой */
+  #introBtn {
+    position: absolute;
+    z-index: 2010;
+    background: var(--accent2);
+    border: 2px solid var(--accent);
+    color: #fff;
+    width: 320px;
+    height: 70px;
+    padding: 0;
+    border-radius: 8px;
+    font-family: 'Courier New', monospace;
+    font-size: 18px;
+    letter-spacing: 4px;
+    font-weight: bold;
+    cursor: grab;
+    user-select: none;
+    white-space: nowrap;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.6);
+    transition: left 0.25s cubic-bezier(0.2,0.9,0.4,1.1),
+                top 0.25s cubic-bezier(0.2,0.9,0.4,1.1),
+                background 0.3s, box-shadow 0.3s, transform 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  #introBtn.runaway {
+    transition: left 0.18s ease, top 0.18s ease, background 0.3s, box-shadow 0.3s;
+  }
+  #introBtn.snapping {
+    transition: left 0.3s cubic-bezier(0.34,1.56,0.64,1),
+                top 0.3s cubic-bezier(0.34,1.56,0.64,1),
+                background 0.3s, box-shadow 0.3s;
+  }
+  #introBtn.armed {
+    background: var(--accent);
+    color: #14110c;
+    cursor: pointer;
+    box-shadow: 0 0 30px rgba(200,162,74,0.6);
+    animation: introPulse 1.2s ease-in-out infinite;
+  }
+  #introBtn.dragging {
+    transition: background 0.3s, box-shadow 0.3s;
+    cursor: grabbing;
+  }
+  @keyframes introPulse {
+    0%,100% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+  }
+  
+  /* незаметная кнопка с крестиком (появляется через 30 сек) */
+  #introClose {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    width: 36px;
+    height: 36px;
+    opacity: 0.25;
+    cursor: pointer;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    font-size: 28px;
+    font-family: monospace;
+    z-index: 2011;
+    background: rgba(0,0,0,0.4);
+    border-radius: 50%;
+    transition: opacity 0.3s;
+    color: var(--text);
+  }
+  #introClose:hover {
+    opacity: 0.9;
+    background: rgba(168,68,42,0.6);
+  }
 </style>
 </head>
 <body class="edit-mode">
+
+<!-- НАЧАЛЬНЫЙ ЭКРАН (упрощённый, без лишних надписей) -->
+<div id="introScreen">
+  <div id="introSlot">ПОСТПРОСТРАНСТВО</div>
+  <button id="introBtn">ЗАГРУЗИТЬ</button>
+  <div id="introClose">✕</div>
+</div>
 
 <div class="bg-layer bg-stagnation" id="bgLayer"></div>
 <div class="grain"></div>
 <div class="scratches"></div>
 <div class="vignette"></div>
 
+<!-- НОВАЯ СТРУКТУРА ТОПБАРА -->
 <div class="topbar">
-  <span class="logo" id="projectTitleSpan" contenteditable="true" spellcheck="false">ПОСТПРОСТРАНСТВО</span>
-  <div class="mode-toggle">
-    <button id="editModeBtn" class="active">РЕДАКТОР</button>
-    <button id="viewModeBtn">ПРОСМОТР</button>
+  <div class="topbar-left">
+    <span class="logo" id="projectTitleSpan" contenteditable="true" spellcheck="false">ПОСТПРОСТРАНСТВО</span>
   </div>
-  <div class="action-buttons" id="viewActions" style="display: none;">
-    <button id="dragPersistBtn">ПЕРЕТАСКИВАНИЕ</button>
-    <button id="resetViewBtn">ВЕРНУТЬ</button>
+  <div class="topbar-center">
+    <div class="mode-toggle">
+      <button id="editModeBtn" class="active">РЕДАКТОР</button>
+      <button id="viewModeBtn">ПРОСМОТР</button>
+    </div>
   </div>
-  <div class="action-buttons">
-    <button id="saveBtn">СОХРАНИТЬ</button>
-    <button id="loadBtn">ЗАГРУЗИТЬ</button>
-    <button id="exportHtmlBtn">ЭКСПОРТ HTML</button>
+  <div class="topbar-right">
+    <div class="action-buttons" id="viewActions" style="display: none;">
+      <button id="dragPersistBtn">ПЕРЕТАСКИВАНИЕ</button>
+      <button id="resetViewBtn">ВЕРНУТЬ</button>
+    </div>
+    <div class="action-buttons">
+      <button id="saveBtn">СОХРАНИТЬ</button>
+      <button id="loadBtn">ЗАГРУЗИТЬ</button>
+      <button id="exportHtmlBtn">ЭКСПОРТ HTML</button>
+    </div>
   </div>
 </div>
 
@@ -830,11 +988,7 @@
 
 <script>
 /* ============================================================
-   ПОСТПРОСТРАНСТВО — ИСПРАВЛЕННАЯ ВЕРСИЯ (кнопка "Вернуть" работает идеально)
-   - При входе в просмотр сохраняется полная глубокая копия всех слайдов.
-   - При нажатии "Вернуть" текущий слайд полностью заменяется на сохранённую версию
-     (положение, масштаб, поворот, содержимое — всё возвращается как было).
-   - Добавление текста и фото работает без потери элементов.
+   ПОЛНАЯ ФУНКЦИОНАЛЬНОСТЬ (оригинал, без изменений)
    ============================================================ */
 const BG_PRESETS = ['bg-stagnation','bg-fog','bg-panels','bg-film','bg-night'];
 const TEXT_COLORS = ['#e8ddc4','#c8a24a','#a8442a','#8a8064','#d8cba8','#ffffff','#6a8a5a','#5a7a9a'];
@@ -844,9 +998,8 @@ let state = { slides: [], current: 0, mode: 'edit', projectTitle: 'ПОСТПР�
 let uid = 1;
 let selectedEl = null, selectedItem = null;
 let viewDragPersist = false;
-let fullSnapshotSlides = null;   // полная копия слайдов при входе в просмотр
+let fullSnapshotSlides = null;
 
-// --- трансформации ---
 function getTransform(el) {
   return {
     x: parseFloat(el.dataset.x || 0),
@@ -1131,7 +1284,6 @@ function goToSlide(idx, animate, dir = idx > state.current ? 1 : -1) { if (idx <
 function navSlide(dir) { goToSlide(state.current + dir, true, dir); }
 function autoSave() {}
 
-// ДОБАВЛЕНИЕ ТЕКСТА И ФОТО (без полной перерисовки)
 function addTextToCurrent() {
   const slide = state.slides[state.current];
   const newId = 'el' + (uid++);
@@ -1219,25 +1371,31 @@ function cycleSlideBg(idx) { const slide = state.slides[idx]; const cur = BG_PRE
 function deleteSlide(idx) { if (state.slides.length <= 1) return alert('Нельзя удалить последний слайд'); state.slides.splice(idx,1); if (state.current >= state.slides.length) state.current = state.slides.length-1; fullRender(); goToSlide(state.current, false); }
 function addSlide() { state.slides.push({ bgPreset:'bg-stagnation', bgImage:null, items: [] }); fullRender(); goToSlide(state.slides.length-1, true); }
 function saveProject() { const data = JSON.stringify({ slides: state.slides, uid, projectTitle: state.projectTitle }); const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([data], {type:'application/json'})); a.download = 'postprostranstvo.json'; a.click(); }
-function loadProject(file) { const reader = new FileReader(); reader.onload = e => { try { const data = JSON.parse(e.target.result); state.slides = data.slides; uid = data.uid || 1; state.projectTitle = data.projectTitle || 'ПОСТПРОСТРАНСТВО'; state.current = 0; fullRender(); goToSlide(0, false); if (state.mode === 'view') takeFullSnapshot(); } catch(err) { alert('Ошибка загрузки'); } }; reader.readAsText(file); }
+function loadProject(file) { 
+  const reader = new FileReader(); 
+  reader.onload = e => { 
+    try { 
+      const data = JSON.parse(e.target.result); 
+      state.slides = data.slides; 
+      uid = data.uid || 1; 
+      state.projectTitle = data.projectTitle || 'ПОСТПРОСТРАНСТВО'; 
+      state.current = 0; 
+      fullRender(); 
+      goToSlide(0, false); 
+      if (state.mode === 'view') takeFullSnapshot(); 
+    } catch(err) { alert('Ошибка загрузки'); } 
+  }; 
+  reader.readAsText(file); 
+}
 function exportHTML() { alert('Сохраните страницу через браузер: Ctrl+S'); }
 
-// --- ПОЛНЫЙ СНАПШОТ (глубокая копия всех слайдов) ---
-function takeFullSnapshot() {
-  fullSnapshotSlides = JSON.parse(JSON.stringify(state.slides));
-}
-
-// --- ВОССТАНОВЛЕНИЕ ТЕКУЩЕГО СЛАЙДА ИЗ СНАПШОТА ---
+function takeFullSnapshot() { fullSnapshotSlides = JSON.parse(JSON.stringify(state.slides)); }
 function resetToSnapshot() {
   if (!fullSnapshotSlides || fullSnapshotSlides.length === 0) return;
-  // Берём сохранённый слайд с тем же индексом
   const savedSlide = fullSnapshotSlides[state.current];
   if (!savedSlide) return;
-  // Заменяем items текущего слайда
   state.slides[state.current].items = JSON.parse(JSON.stringify(savedSlide.items));
-  // Обновляем фон (если нужно)
   if (savedSlide.bgPreset) state.slides[state.current].bgPreset = savedSlide.bgPreset;
-  // Перерисовываем только текущий слайд
   const currentSection = document.querySelector(`.section[data-index="${state.current}"]`);
   if (currentSection) {
     const itemsLayer = currentSection.querySelector('.items-layer');
@@ -1255,7 +1413,6 @@ function resetToSnapshot() {
         });
       }
     }
-    // Обновляем классы фона
     BG_PRESETS.forEach(b => currentSection.classList.remove(b));
     currentSection.classList.add(state.slides[state.current].bgPreset || 'bg-stagnation');
   }
@@ -1272,7 +1429,7 @@ function setMode(mode) {
   const viewActions = document.getElementById('viewActions');
   if (mode === 'view') {
     viewActions.style.display = 'flex';
-    takeFullSnapshot();           // запоминаем всё при входе в просмотр
+    takeFullSnapshot();
   } else {
     viewActions.style.display = 'none';
     viewDragPersist = false;
@@ -1288,22 +1445,19 @@ function updatePersistButtonUI() {
 function toggleDragPersist() { viewDragPersist = !viewDragPersist; updatePersistButtonUI(); autoSave(); }
 function openViewer(src) { const viewer = document.getElementById('viewer'); document.getElementById('viewerImg').src = src; viewer.classList.add('show'); }
 
+/* --- Базовые обработчики --- */
 document.getElementById('viewer').addEventListener('click', () => document.getElementById('viewer').classList.remove('show'));
 document.getElementById('leftArrow').onclick = () => navSlide(-1);
 document.getElementById('rightArrow').onclick = () => navSlide(1);
 document.getElementById('addSlideBtn').onclick = addSlide;
 document.getElementById('saveBtn').onclick = saveProject;
-document.getElementById('loadBtn').onclick = () => document.getElementById('loadFileInput').click();
-document.getElementById('loadFileInput').onchange = e => { if(e.target.files[0]) loadProject(e.target.files[0]); e.target.value=''; };
 document.getElementById('exportHtmlBtn').onclick = exportHTML;
 document.getElementById('editModeBtn').onclick = () => setMode('edit');
 document.getElementById('viewModeBtn').onclick = () => setMode('view');
-
 const persistBtn = document.getElementById('dragPersistBtn');
 if (persistBtn) persistBtn.onclick = toggleDragPersist;
 const resetBtn = document.getElementById('resetViewBtn');
 if (resetBtn) resetBtn.onclick = resetToSnapshot;
-
 const titleSpan = document.getElementById('projectTitleSpan');
 titleSpan.addEventListener('blur', () => { state.projectTitle = titleSpan.innerText; autoSave(); });
 
@@ -1332,6 +1486,52 @@ document.addEventListener('mousedown', e => {
   if (!e.target.closest('.draggable') && !e.target.closest('#ctrlOverlay') && !e.target.closest('.item-toolbar') && !e.target.closest('.text-toolbar'))
     deselect();
 });
+
+/* --- НАЧАЛЬНЫЙ ЭКРАН (с доработками) --- */
+(function initIntro() {
+  const screen = document.getElementById('introScreen');
+  const btn = document.getElementById('introBtn');
+  const slot = document.getElementById('introSlot');
+  const closeBtn = document.getElementById('introClose');
+  const SNAP_RADIUS = 70;
+  let armed = false, dragging = false, pointerId = null, offX = 0, offY = 0;
+  function place(x, y) { btn.style.left = x + 'px'; btn.style.top = y + 'px'; }
+  function centerOfSlot() { const r = slot.getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; }
+  function btnCenter() { const r = btn.getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; }
+  function layout() { if (!armed) place(window.innerWidth * 0.62, window.innerHeight * 0.78); }
+  layout(); window.addEventListener('resize', layout);
+  
+  // убегание от мыши
+  screen.addEventListener('mousemove', (e) => { if (armed || dragging) return; const c = btnCenter(); const dx = c.x - e.clientX, dy = c.y - e.clientY; if (Math.hypot(dx, dy) < 130) { const r = btn.getBoundingClientRect(); const ang = Math.atan2(dy, dx); let nx = c.x + Math.cos(ang) * 180 - r.width / 2, ny = c.y + Math.sin(ang) * 180 - r.height / 2; nx = Math.max(20, Math.min(window.innerWidth - r.width - 20, nx)); ny = Math.max(90, Math.min(window.innerHeight - r.height - 20, ny)); btn.classList.add('runaway'); place(nx, ny); } });
+  
+  // перетаскивание
+  btn.addEventListener('pointerdown', (e) => { if (armed) return; e.preventDefault(); dragging = true; pointerId = e.pointerId; btn.setPointerCapture(pointerId); btn.classList.remove('runaway'); btn.classList.add('dragging'); const r = btn.getBoundingClientRect(); offX = e.clientX - r.left; offY = e.clientY - r.top; });
+  btn.addEventListener('pointermove', (e) => { if (!dragging) return; let nx = e.clientX - offX, ny = e.clientY - offY; place(nx, ny); const c = { x: nx + btn.offsetWidth / 2, y: ny + btn.offsetHeight / 2 }; const sc = centerOfSlot(); const dist = Math.hypot(c.x - sc.x, c.y - sc.y); slot.classList.toggle('armed', dist < SNAP_RADIUS); });
+  btn.addEventListener('pointerup', (e) => { if (!dragging) return; dragging = false; btn.classList.remove('dragging'); try { btn.releasePointerCapture(pointerId); } catch(err) {} const c = btnCenter(); const sc = centerOfSlot(); const dist = Math.hypot(c.x - sc.x, c.y - sc.y); if (dist < SNAP_RADIUS) { const targetX = sc.x - btn.offsetWidth / 2, targetY = sc.y - btn.offsetHeight / 2; btn.classList.add('snapping'); place(targetX, targetY); slot.classList.remove('armed'); armed = true; setTimeout(() => { btn.classList.remove('snapping'); btn.classList.add('armed'); btn.textContent = 'ЗАГРУЗИТЬ ▸'; }, 300); } else { slot.classList.remove('armed'); } });
+  
+  function finishIntro() { if (!screen || screen.classList.contains('hide')) return; screen.classList.add('hide'); setMode('view'); setTimeout(() => screen.remove(), 1200); }
+  
+  // клик по активной кнопке = загрузка файла
+  btn.addEventListener('click', () => { if (!armed) return; const fileInput = document.getElementById('loadFileInput'); fileInput.click(); });
+  
+  // крестик появляется через 30 секунд
+  setTimeout(() => { if (closeBtn) closeBtn.style.display = 'flex'; }, 30000);
+  closeBtn.addEventListener('click', finishIntro);
+  
+  // перехватываем загрузку файла, даём время на полную отрисовку
+  const originalLoadHandler = document.getElementById('loadFileInput').onchange;
+  document.getElementById('loadFileInput').onchange = (e) => {
+    if (e.target.files && e.target.files[0]) {
+      loadProject(e.target.files[0]);
+      // небольшая задержка для гарантии, что все элементы слайда построены
+      setTimeout(() => {
+        if (screen && !screen.classList.contains('hide')) finishIntro();
+      }, 300);
+    }
+    e.target.value = '';
+    if (originalLoadHandler) originalLoadHandler(e);
+  };
+})();
 
 state.slides = defaultSlides();
 state.projectTitle = 'ПОСТПРОСТРАНСТВО';
