@@ -774,26 +774,6 @@
   body.view-mode .empty-hint {
     display: none;
   }
-
-  /* Индикатор загрузки */
-  .loading-overlay {
-    position: fixed;
-    inset: 0;
-    background: #0d0a06;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 1000;
-    font-family: 'Courier New', monospace;
-    font-size: 20px;
-    color: var(--accent);
-    backdrop-filter: blur(4px);
-    transition: opacity 0.5s ease;
-  }
-  .loading-overlay.hide {
-    opacity: 0;
-    pointer-events: none;
-  }
 </style>
 </head>
 <body class="edit-mode">
@@ -848,105 +828,25 @@
 <input type="file" id="imageUpload" accept="image/*" style="display:none">
 <input type="file" id="loadFileInput" accept=".json" style="display:none">
 
-<div class="loading-overlay" id="loadingOverlay">
-  <div>Загрузка проекта...</div>
-</div>
-
 <script>
 /* ============================================================
-   ПОСТПРОСТРАНСТВО — АВТОМАТИЧЕСКАЯ ЗАГРУЗКА ИЗ JSON 
-   (c Яндекс.Диска)
+   ПОСТПРОСТРАНСТВО — ИСПРАВЛЕННАЯ ВЕРСИЯ (кнопка "Вернуть" работает идеально)
+   - При входе в просмотр сохраняется полная глубокая копия всех слайдов.
+   - При нажатии "Вернуть" текущий слайд полностью заменяется на сохранённую версию
+     (положение, масштаб, поворот, содержимое — всё возвращается как было).
+   - Добавление текста и фото работает без потери элементов.
    ============================================================ */
-
-// --- УТИЛИТЫ ДЛЯ РАБОТЫ С ЯНДЕКС.ДИСК ---
-const YANDEX_PUBLIC_KEY = 'https://disk.yandex.ru/d/MhDEd3ThEQ61YA';
-const YANDEX_API_URL = 'https://cloud-api.yandex.net/v1/disk/public/resources/download';
-
-// Функция для получения прямой ссылки на скачивание через API Яндекс.Диска
-async function getDirectDownloadLink(publicKey) {
-  const url = `${YANDEX_API_URL}?public_key=${encodeURIComponent(publicKey)}`;
-  const response = await fetch(url);
-  if (!response.ok) throw new Error(`Ошибка получения ссылки: ${response.status}`);
-  const data = await response.json();
-  if (!data.href) throw new Error('Не удалось получить прямую ссылку на файл');
-  return data.href;
-}
-
-// Функция для загрузки JSON с использованием CORS-прокси (на случай CORS-блокировки)
-async function fetchJsonWithCorsProxy(url) {
-  // Пробуем через прокси AllOrigins
-  const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`;
-  const response = await fetch(proxyUrl);
-  if (!response.ok) throw new Error(`Ошибка загрузки через прокси: ${response.status}`);
-  return await response.json();
-}
-
-// Основная функция загрузки проекта из облака
-async function loadRemoteProject() {
-  const loadingOverlay = document.getElementById('loadingOverlay');
-  loadingOverlay.classList.remove('hide');
-  
-  try {
-    // 1. Получаем прямую ссылку на скачивание
-    const directLink = await getDirectDownloadLink(YANDEX_PUBLIC_KEY);
-    
-    // 2. Пробуем загрузить JSON напрямую (если сервер позволяет)
-    let projectData;
-    try {
-      const directResponse = await fetch(directLink);
-      if (!directResponse.ok) throw new Error('Прямая загрузка не удалась');
-      projectData = await directResponse.json();
-    } catch (directError) {
-      // Если прямая загрузка заблокирована CORS, используем прокси
-      console.warn('Прямая загрузка не удалась, используем CORS-прокси');
-      projectData = await fetchJsonWithCorsProxy(directLink);
-    }
-    
-    // 3. Проверяем структуру данных и применяем к состоянию
-    if (projectData && projectData.slides && Array.isArray(projectData.slides)) {
-      state.slides = projectData.slides;
-      state.projectTitle = projectData.projectTitle || state.projectTitle;
-      uid = projectData.uid || 1;
-      state.current = 0;
-      
-      // Полный рендер приложения
-      fullRender();
-      goToSlide(0, false);
-      
-      // Если проект загружен в режиме просмотра, делаем снапшот
-      if (state.mode === 'view') takeFullSnapshot();
-      
-      console.log('Проект успешно загружен из облака');
-    } else {
-      throw new Error('Некорректный формат данных в JSON');
-    }
-  } catch (error) {
-    console.error('Ошибка загрузки проекта:', error);
-    // В случае ошибки оставляем дефолтные слайды
-    state.slides = defaultSlides();
-    state.projectTitle = 'ПОСТПРОСТРАНСТВО';
-    fullRender();
-    goToSlide(0, false);
-  } finally {
-    // Скрываем индикатор загрузки с задержкой для плавности
-    setTimeout(() => {
-      loadingOverlay.classList.add('hide');
-      setTimeout(() => {
-        loadingOverlay.style.display = 'none';
-      }, 500);
-    }, 300);
-  }
-}
-
-// --- ОСТАЛЬНОЙ КОД ПРИЛОЖЕНИЯ (БЕЗ ИЗМЕНЕНИЙ) ---
+const BG_PRESETS = ['bg-stagnation','bg-fog','bg-panels','bg-film','bg-night'];
+const TEXT_COLORS = ['#e8ddc4','#c8a24a','#a8442a','#8a8064','#d8cba8','#ffffff','#6a8a5a','#5a7a9a'];
+const PLATE_COLORS = ['#14110c','#1c1810','#2a2418','#c8a24a','#a8442a','#d8cba8','#0d1018','#2a2820'];
 
 let state = { slides: [], current: 0, mode: 'edit', projectTitle: 'ПОСТПРОСТРАНСТВО' };
 let uid = 1;
 let selectedEl = null, selectedItem = null;
 let viewDragPersist = false;
-let fullSnapshotSlides = null;
+let fullSnapshotSlides = null;   // полная копия слайдов при входе в просмотр
 
-// --- Трансформации ---
+// --- трансформации ---
 function getTransform(el) {
   return {
     x: parseFloat(el.dataset.x || 0),
@@ -972,7 +872,6 @@ function defaultSlides() {
   }];
 }
 
-// --- ФУНКЦИИ ОТРИСОВКИ И УПРАВЛЕНИЯ ЭЛЕМЕНТАМИ (сохранены оригинальными) ---
 function buildItemElement(item, slideIdx) {
   const div = document.createElement('div');
   div.className = 'draggable';
@@ -1232,7 +1131,7 @@ function goToSlide(idx, animate, dir = idx > state.current ? 1 : -1) { if (idx <
 function navSlide(dir) { goToSlide(state.current + dir, true, dir); }
 function autoSave() {}
 
-// Добавление текста и фото
+// ДОБАВЛЕНИЕ ТЕКСТА И ФОТО (без полной перерисовки)
 function addTextToCurrent() {
   const slide = state.slides[state.current];
   const newId = 'el' + (uid++);
@@ -1323,13 +1222,22 @@ function saveProject() { const data = JSON.stringify({ slides: state.slides, uid
 function loadProject(file) { const reader = new FileReader(); reader.onload = e => { try { const data = JSON.parse(e.target.result); state.slides = data.slides; uid = data.uid || 1; state.projectTitle = data.projectTitle || 'ПОСТПРОСТРАНСТВО'; state.current = 0; fullRender(); goToSlide(0, false); if (state.mode === 'view') takeFullSnapshot(); } catch(err) { alert('Ошибка загрузки'); } }; reader.readAsText(file); }
 function exportHTML() { alert('Сохраните страницу через браузер: Ctrl+S'); }
 
-function takeFullSnapshot() { fullSnapshotSlides = JSON.parse(JSON.stringify(state.slides)); }
+// --- ПОЛНЫЙ СНАПШОТ (глубокая копия всех слайдов) ---
+function takeFullSnapshot() {
+  fullSnapshotSlides = JSON.parse(JSON.stringify(state.slides));
+}
+
+// --- ВОССТАНОВЛЕНИЕ ТЕКУЩЕГО СЛАЙДА ИЗ СНАПШОТА ---
 function resetToSnapshot() {
   if (!fullSnapshotSlides || fullSnapshotSlides.length === 0) return;
+  // Берём сохранённый слайд с тем же индексом
   const savedSlide = fullSnapshotSlides[state.current];
   if (!savedSlide) return;
+  // Заменяем items текущего слайда
   state.slides[state.current].items = JSON.parse(JSON.stringify(savedSlide.items));
+  // Обновляем фон (если нужно)
   if (savedSlide.bgPreset) state.slides[state.current].bgPreset = savedSlide.bgPreset;
+  // Перерисовываем только текущий слайд
   const currentSection = document.querySelector(`.section[data-index="${state.current}"]`);
   if (currentSection) {
     const itemsLayer = currentSection.querySelector('.items-layer');
@@ -1347,6 +1255,7 @@ function resetToSnapshot() {
         });
       }
     }
+    // Обновляем классы фона
     BG_PRESETS.forEach(b => currentSection.classList.remove(b));
     currentSection.classList.add(state.slides[state.current].bgPreset || 'bg-stagnation');
   }
@@ -1363,7 +1272,7 @@ function setMode(mode) {
   const viewActions = document.getElementById('viewActions');
   if (mode === 'view') {
     viewActions.style.display = 'flex';
-    takeFullSnapshot();
+    takeFullSnapshot();           // запоминаем всё при входе в просмотр
   } else {
     viewActions.style.display = 'none';
     viewDragPersist = false;
@@ -1371,7 +1280,11 @@ function setMode(mode) {
   }
   deselect();
 }
-function updatePersistButtonUI() { const btn = document.getElementById('dragPersistBtn'); if (viewDragPersist) btn.classList.add('active'); else btn.classList.remove('active'); }
+function updatePersistButtonUI() {
+  const btn = document.getElementById('dragPersistBtn');
+  if (viewDragPersist) btn.classList.add('active');
+  else btn.classList.remove('active');
+}
 function toggleDragPersist() { viewDragPersist = !viewDragPersist; updatePersistButtonUI(); autoSave(); }
 function openViewer(src) { const viewer = document.getElementById('viewer'); document.getElementById('viewerImg').src = src; viewer.classList.add('show'); }
 
@@ -1420,20 +1333,10 @@ document.addEventListener('mousedown', e => {
     deselect();
 });
 
-const BG_PRESETS = ['bg-stagnation','bg-fog','bg-panels','bg-film','bg-night'];
-const TEXT_COLORS = ['#e8ddc4','#c8a24a','#a8442a','#8a8064','#d8cba8','#ffffff','#6a8a5a','#5a7a9a'];
-const PLATE_COLORS = ['#14110c','#1c1810','#2a2418','#c8a24a','#a8442a','#d8cba8','#0d1018','#2a2820'];
-
-// --- ЗАПУСК ПРИЛОЖЕНИЯ С АВТОЗАГРУЗКОЙ ИЗ ОБЛАКА ---
-(async () => {
-  // Загружаем проект с Яндекс.Диска
-  await loadRemoteProject();
-  
-  // Устанавливаем обработчики событий для всех кнопок и т.д.
-  // Они уже были созданы ранее, но некоторые могут быть переопределены.
-  // Убедимся, что режим просмотра работает корректно
-  setMode('edit');
-})();
+state.slides = defaultSlides();
+state.projectTitle = 'ПОСТПРОСТРАНСТВО';
+fullRender();
+goToSlide(0, false);
 </script>
 </body>
 </html>
