@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>Прогулки по постпространству — Питчинг</title>
+<title>Постпространство</title>
 <style>
   * {
     margin: 0;
@@ -796,7 +796,7 @@
     display: none;
   }
 
-  /* -------------------- НАЧАЛЬНЫЙ ЭКРАН (упрощённый) -------------------- */
+  /* -------------------- НАЧАЛЬНЫЙ ЭКРАН -------------------- */
   #introScreen {
     position: fixed;
     inset: 0;
@@ -844,7 +844,7 @@
     color: var(--accent);
   }
 
-  /* Убегающая кнопка, теперь одинакового размера с выемкой */
+  /* Убегающая кнопка */
   #introBtn {
     position: absolute;
     z-index: 2010;
@@ -894,7 +894,7 @@
     50% { transform: scale(1.05); }
   }
   
-  /* незаметная кнопка с крестиком (появляется через 30 сек) */
+  /* незаметная кнопка с крестиком */
   #introClose {
     position: absolute;
     top: 20px;
@@ -922,7 +922,7 @@
 </head>
 <body class="edit-mode">
 
-<!-- НАЧАЛЬНЫЙ ЭКРАН (упрощённый, без лишних надписей) -->
+<!-- НАЧАЛЬНЫЙ ЭКРАН -->
 <div id="introScreen">
   <div id="introSlot">ПОСТПРОСТРАНСТВО</div>
   <button id="introBtn">ЗАГРУЗИТЬ</button>
@@ -934,7 +934,7 @@
 <div class="scratches"></div>
 <div class="vignette"></div>
 
-<!-- НОВАЯ СТРУКТУРА ТОПБАРА -->
+<!-- ТОПБАР -->
 <div class="topbar">
   <div class="topbar-left">
     <span class="logo" id="projectTitleSpan" contenteditable="true" spellcheck="false">ПОСТПРОСТРАНСТВО</span>
@@ -988,7 +988,7 @@
 
 <script>
 /* ============================================================
-   ПОЛНАЯ ФУНКЦИОНАЛЬНОСТЬ (оригинал, без изменений)
+   ПОЛНАЯ ФУНКЦИОНАЛЬНОСТЬ (оригинал + исправления)
    ============================================================ */
 const BG_PRESETS = ['bg-stagnation','bg-fog','bg-panels','bg-film','bg-night'];
 const TEXT_COLORS = ['#e8ddc4','#c8a24a','#a8442a','#8a8064','#d8cba8','#ffffff','#6a8a5a','#5a7a9a'];
@@ -1018,9 +1018,9 @@ function defaultSlides() {
     bgPreset: 'bg-stagnation',
     bgImage: null, bgSize: 'cover', bgPos: 'center',
     items: [
-      { id: 'el1', type:'text', kind:'tag', left:'8vw', top:'18vh', tx:0, ty:0, scale:1, rot:0, content:'Документальный проект', color:'', align:'left', plate:'', z:4 },
-      { id: 'el2', type:'text', kind:'h1', left:'8vw', top:'26vh', tx:0, ty:0, scale:1, rot:0, content:'ПРОГУЛКИ ПО<br>ПОСТПРОСТРАНСТВУ', color:'', align:'left', plate:'', z:4 },
-      { id: 'el3', type:'text', kind:'sub', left:'8vw', top:'56vh', tx:0, ty:0, scale:1, rot:0, content:'Эссе о памяти, времени и заброшенных местах', color:'', align:'left', plate:'', z:4 }
+      { id: 'el1', type:'text', kind:'tag', left:'8vw', top:'18vh', tx:0, ty:0, scale:1, rot:0, content:'Я знаю ничего, кроме того, что шестиугольники шепчут:', color:'', align:'left', plate:'', z:4 },
+      { id: 'el2', type:'text', kind:'h1', left:'8vw', top:'26vh', tx:0, ty:0, scale:1, rot:0, content:'Постпространство появляется там, где вы больше всего уверены в перманентности бытия', color:'', align:'left', plate:'', z:4 },
+      { id: 'el3', type:'text', kind:'sub', left:'8vw', top:'56vh', tx:0, ty:0, scale:1, rot:0, content:'Cogitas ergo sum', color:'', align:'left', plate:'', z:4 }
     ]
   }];
 }
@@ -1461,6 +1461,19 @@ if (resetBtn) resetBtn.onclick = resetToSnapshot;
 const titleSpan = document.getElementById('projectTitleSpan');
 titleSpan.addEventListener('blur', () => { state.projectTitle = titleSpan.innerText; autoSave(); });
 
+// Кнопка ЗАГРУЗИТЬ в топбаре
+const loadBtn = document.getElementById('loadBtn');
+if (loadBtn) {
+  loadBtn.onclick = () => document.getElementById('loadFileInput').click();
+}
+const fileInput = document.getElementById('loadFileInput');
+fileInput.onchange = (e) => {
+  if (e.target.files && e.target.files[0]) {
+    loadProject(e.target.files[0]);
+  }
+  e.target.value = '';
+};
+
 document.addEventListener('keydown', (e) => {
   if (state.mode === 'view' && e.key === 'Control') {
     e.preventDefault();
@@ -1487,7 +1500,7 @@ document.addEventListener('mousedown', e => {
     deselect();
 });
 
-/* --- НАЧАЛЬНЫЙ ЭКРАН (с доработками) --- */
+/* --- НАЧАЛЬНЫЙ ЭКРАН (сохраняем эффекты кнопки) --- */
 (function initIntro() {
   const screen = document.getElementById('introScreen');
   const btn = document.getElementById('introBtn');
@@ -1495,42 +1508,38 @@ document.addEventListener('mousedown', e => {
   const closeBtn = document.getElementById('introClose');
   const SNAP_RADIUS = 70;
   let armed = false, dragging = false, pointerId = null, offX = 0, offY = 0;
+  let alreadyUsed = false;   // флаг, чтобы после загрузки не вызывать повторно
+
   function place(x, y) { btn.style.left = x + 'px'; btn.style.top = y + 'px'; }
   function centerOfSlot() { const r = slot.getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; }
   function btnCenter() { const r = btn.getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; }
   function layout() { if (!armed) place(window.innerWidth * 0.62, window.innerHeight * 0.78); }
   layout(); window.addEventListener('resize', layout);
   
-  // убегание от мыши
-  screen.addEventListener('mousemove', (e) => { if (armed || dragging) return; const c = btnCenter(); const dx = c.x - e.clientX, dy = c.y - e.clientY; if (Math.hypot(dx, dy) < 130) { const r = btn.getBoundingClientRect(); const ang = Math.atan2(dy, dx); let nx = c.x + Math.cos(ang) * 180 - r.width / 2, ny = c.y + Math.sin(ang) * 180 - r.height / 2; nx = Math.max(20, Math.min(window.innerWidth - r.width - 20, nx)); ny = Math.max(90, Math.min(window.innerHeight - r.height - 20, ny)); btn.classList.add('runaway'); place(nx, ny); } });
+  screen.addEventListener('mousemove', (e) => { if (armed || dragging || alreadyUsed) return; const c = btnCenter(); const dx = c.x - e.clientX, dy = c.y - e.clientY; if (Math.hypot(dx, dy) < 130) { const r = btn.getBoundingClientRect(); const ang = Math.atan2(dy, dx); let nx = c.x + Math.cos(ang) * 180 - r.width / 2, ny = c.y + Math.sin(ang) * 180 - r.height / 2; nx = Math.max(20, Math.min(window.innerWidth - r.width - 20, nx)); ny = Math.max(90, Math.min(window.innerHeight - r.height - 20, ny)); btn.classList.add('runaway'); place(nx, ny); } });
   
-  // перетаскивание
-  btn.addEventListener('pointerdown', (e) => { if (armed) return; e.preventDefault(); dragging = true; pointerId = e.pointerId; btn.setPointerCapture(pointerId); btn.classList.remove('runaway'); btn.classList.add('dragging'); const r = btn.getBoundingClientRect(); offX = e.clientX - r.left; offY = e.clientY - r.top; });
+  btn.addEventListener('pointerdown', (e) => { if (armed || alreadyUsed) return; e.preventDefault(); dragging = true; pointerId = e.pointerId; btn.setPointerCapture(pointerId); btn.classList.remove('runaway'); btn.classList.add('dragging'); const r = btn.getBoundingClientRect(); offX = e.clientX - r.left; offY = e.clientY - r.top; });
   btn.addEventListener('pointermove', (e) => { if (!dragging) return; let nx = e.clientX - offX, ny = e.clientY - offY; place(nx, ny); const c = { x: nx + btn.offsetWidth / 2, y: ny + btn.offsetHeight / 2 }; const sc = centerOfSlot(); const dist = Math.hypot(c.x - sc.x, c.y - sc.y); slot.classList.toggle('armed', dist < SNAP_RADIUS); });
   btn.addEventListener('pointerup', (e) => { if (!dragging) return; dragging = false; btn.classList.remove('dragging'); try { btn.releasePointerCapture(pointerId); } catch(err) {} const c = btnCenter(); const sc = centerOfSlot(); const dist = Math.hypot(c.x - sc.x, c.y - sc.y); if (dist < SNAP_RADIUS) { const targetX = sc.x - btn.offsetWidth / 2, targetY = sc.y - btn.offsetHeight / 2; btn.classList.add('snapping'); place(targetX, targetY); slot.classList.remove('armed'); armed = true; setTimeout(() => { btn.classList.remove('snapping'); btn.classList.add('armed'); btn.textContent = 'ЗАГРУЗИТЬ ▸'; }, 300); } else { slot.classList.remove('armed'); } });
   
   function finishIntro() { if (!screen || screen.classList.contains('hide')) return; screen.classList.add('hide'); setMode('view'); setTimeout(() => screen.remove(), 1200); }
   
-  // клик по активной кнопке = загрузка файла
-  btn.addEventListener('click', () => { if (!armed) return; const fileInput = document.getElementById('loadFileInput'); fileInput.click(); });
-  
-  // крестик появляется через 30 секунд
-  setTimeout(() => { if (closeBtn) closeBtn.style.display = 'flex'; }, 30000);
-  closeBtn.addEventListener('click', finishIntro);
-  
-  // перехватываем загрузку файла, даём время на полную отрисовку
-  const originalLoadHandler = document.getElementById('loadFileInput').onchange;
-  document.getElementById('loadFileInput').onchange = (e) => {
-    if (e.target.files && e.target.files[0]) {
-      loadProject(e.target.files[0]);
-      // небольшая задержка для гарантии, что все элементы слайда построены
+  btn.addEventListener('click', () => { 
+    if (!armed || alreadyUsed) return; 
+    alreadyUsed = true;   // блокируем повторный клик, но НЕ меняем стиль кнопки — эффекты остаются
+    const loadFileInput = document.getElementById('loadFileInput');
+    const onLoad = () => {
       setTimeout(() => {
         if (screen && !screen.classList.contains('hide')) finishIntro();
       }, 300);
-    }
-    e.target.value = '';
-    if (originalLoadHandler) originalLoadHandler(e);
-  };
+      loadFileInput.removeEventListener('change', onLoad);
+    };
+    loadFileInput.addEventListener('change', onLoad);
+    loadFileInput.click();
+  });
+  
+  setTimeout(() => { if (closeBtn) closeBtn.style.display = 'flex'; }, 30000);
+  closeBtn.addEventListener('click', finishIntro);
 })();
 
 state.slides = defaultSlides();
