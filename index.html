@@ -984,11 +984,11 @@
 </div>
 
 <input type="file" id="imageUpload" accept="image/*" style="display:none">
-<input type="file" id="loadFileInput" accept=".json" style="display:none">
+<input type="file" id="loadFileInput" accept=".pstspc,.json,application/json" style="display:none">
 
 <script>
 /* ============================================================
-   ПОЛНАЯ ФУНКЦИОНАЛЬНОСТЬ (оригинал + исправления)
+   ПОЛНАЯ ФУНКЦИОНАЛЬНОСТЬ — расширение .pstspc
    ============================================================ */
 const BG_PRESETS = ['bg-stagnation','bg-fog','bg-panels','bg-film','bg-night'];
 const TEXT_COLORS = ['#e8ddc4','#c8a24a','#a8442a','#8a8064','#d8cba8','#ffffff','#6a8a5a','#5a7a9a'];
@@ -1370,7 +1370,18 @@ function handleDropOnSlide(e, slideIdx) {
 function cycleSlideBg(idx) { const slide = state.slides[idx]; const cur = BG_PRESETS.indexOf(slide.bgPreset || 'bg-stagnation'); const next = (cur+1) % BG_PRESETS.length; slide.bgPreset = BG_PRESETS[next]; slide.bgImage = null; const sec = document.querySelector(`.section[data-index="${idx}"]`); if (sec) { BG_PRESETS.forEach(b => sec.classList.remove(b)); sec.classList.add(slide.bgPreset); } if (idx === state.current) updateGlobalBg(); }
 function deleteSlide(idx) { if (state.slides.length <= 1) return alert('Нельзя удалить последний слайд'); state.slides.splice(idx,1); if (state.current >= state.slides.length) state.current = state.slides.length-1; fullRender(); goToSlide(state.current, false); }
 function addSlide() { state.slides.push({ bgPreset:'bg-stagnation', bgImage:null, items: [] }); fullRender(); goToSlide(state.slides.length-1, true); }
-function saveProject() { const data = JSON.stringify({ slides: state.slides, uid, projectTitle: state.projectTitle }); const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([data], {type:'application/json'})); a.download = 'postprostranstvo.json'; a.click(); }
+
+// СОХРАНЕНИЕ С РАСШИРЕНИЕМ .pstspc
+function saveProject() {
+  const data = JSON.stringify({ slides: state.slides, uid, projectTitle: state.projectTitle });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([data], {type: 'application/json'}));
+  let filename = (state.projectTitle || "postprostranstvo").replace(/[\\/:*?"<>|]/g, '_').trim();
+  if (!filename) filename = "postprostranstvo";
+  a.download = filename + ".pstspc";
+  a.click();
+}
+
 function loadProject(file) { 
   const reader = new FileReader(); 
   reader.onload = e => { 
@@ -1461,7 +1472,6 @@ if (resetBtn) resetBtn.onclick = resetToSnapshot;
 const titleSpan = document.getElementById('projectTitleSpan');
 titleSpan.addEventListener('blur', () => { state.projectTitle = titleSpan.innerText; autoSave(); });
 
-// Кнопка ЗАГРУЗИТЬ в топбаре
 const loadBtn = document.getElementById('loadBtn');
 if (loadBtn) {
   loadBtn.onclick = () => document.getElementById('loadFileInput').click();
@@ -1500,7 +1510,7 @@ document.addEventListener('mousedown', e => {
     deselect();
 });
 
-/* --- НАЧАЛЬНЫЙ ЭКРАН (сохраняем эффекты кнопки) --- */
+/* --- НАЧАЛЬНЫЙ ЭКРАН --- */
 (function initIntro() {
   const screen = document.getElementById('introScreen');
   const btn = document.getElementById('introBtn');
@@ -1508,7 +1518,7 @@ document.addEventListener('mousedown', e => {
   const closeBtn = document.getElementById('introClose');
   const SNAP_RADIUS = 70;
   let armed = false, dragging = false, pointerId = null, offX = 0, offY = 0;
-  let alreadyUsed = false;   // флаг, чтобы после загрузки не вызывать повторно
+  let alreadyUsed = false;
 
   function place(x, y) { btn.style.left = x + 'px'; btn.style.top = y + 'px'; }
   function centerOfSlot() { const r = slot.getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; }
@@ -1526,7 +1536,7 @@ document.addEventListener('mousedown', e => {
   
   btn.addEventListener('click', () => { 
     if (!armed || alreadyUsed) return; 
-    alreadyUsed = true;   // блокируем повторный клик, но НЕ меняем стиль кнопки — эффекты остаются
+    alreadyUsed = true;
     const loadFileInput = document.getElementById('loadFileInput');
     const onLoad = () => {
       setTimeout(() => {
